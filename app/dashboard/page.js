@@ -10,13 +10,31 @@ export default function Dashboard() {
   const [bookmarks, setBookmarks] = useState([]);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
+    const getSession = async () => {
+      const { data } = await supabase.auth.getSession();
+
+      if (!data.session) {
         window.location.href = "/";
       } else {
-        setUser(data.user);
+        setUser(data.session.user);
       }
-    });
+    };
+
+    getSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange(
+      (event, session) => {
+        if (session) {
+          setUser(session.user);
+        } else {
+          window.location.href = "/";
+        }
+      }
+    );
+
+    return () => {
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -72,7 +90,7 @@ export default function Dashboard() {
   return (
     <main className="min-h-screen bg-gray-950 text-white p-10">
       <h1 className="text-3xl font-bold mb-6">
-        Welcome {user.user_metadata.full_name}
+        Welcome {user.user_metadata?.full_name || user.email}
       </h1>
 
       <div className="space-y-3">
@@ -102,7 +120,7 @@ export default function Dashboard() {
             key={b.id}
             className="bg-gray-800 p-4 rounded flex justify-between"
           >
-            <a href={b.url} target="_blank">
+            <a href={b.url} target="_blank" rel="noreferrer">
               {b.title}
             </a>
             <button
