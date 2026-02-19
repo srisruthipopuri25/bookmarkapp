@@ -6,10 +6,12 @@ import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
   const router = useRouter();
+
   const [user, setUser] = useState(null);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
   const [bookmarks, setBookmarks] = useState([]);
+  const [errorMessage, setErrorMessage] = useState("");
 
   useEffect(() => {
     const getSession = async () => {
@@ -26,11 +28,8 @@ export default function Dashboard() {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       (event, session) => {
-        if (session) {
-          setUser(session.user);
-        } else {
-          router.push("/");
-        }
+        if (session) setUser(session.user);
+        else router.push("/");
       }
     );
 
@@ -49,9 +48,7 @@ export default function Dashboard() {
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table: "bookmarks" },
-        () => {
-          fetchBookmarks();
-        }
+        fetchBookmarks
       )
       .subscribe();
 
@@ -70,19 +67,44 @@ export default function Dashboard() {
     setBookmarks(data || []);
   };
 
+  const isValidUrl = (value) => {
+    try {
+      const parsed = new URL(value);
+      return parsed.protocol === "http:" || parsed.protocol === "https:";
+    } catch {
+      return false;
+    }
+  };
+
   const addBookmark = async () => {
-    if (!url || !title) return;
+    setErrorMessage("");
+
+    if (!url.trim() || !title.trim()) {
+      setErrorMessage("URL and title are required.");
+      return;
+    }
+
+    if (!isValidUrl(url.trim())) {
+      setErrorMessage("Please enter a valid URL (must start with http or https).");
+      return;
+    }
 
     const { data, error } = await supabase
       .from("bookmarks")
       .insert({
-        url,
-        title,
+        url: url.trim(),
+        title: title.trim(),
         user_id: user.id,
       })
       .select();
 
-    if (!error && data) {
+    if (error) {
+      console.error(error);
+      setErrorMessage("Failed to add bookmark.");
+      return;
+    }
+
+    if (data && data.length > 0) {
       setBookmarks((prev) => [data[0], ...prev]);
     }
 
@@ -91,7 +113,17 @@ export default function Dashboard() {
   };
 
   const deleteBookmark = async (id) => {
-    await supabase.from("bookmarks").delete().eq("id", id);
+    const { error } = await supabase
+      .from("bookmarks")
+      .delete()
+      .eq("id", id);
+
+    if (error) {
+      console.error(error);
+      return;
+    }
+
+    setBookmarks((prev) => prev.filter((b) => b.id !== id));
   };
 
   const handleLogout = async () => {
@@ -111,7 +143,7 @@ export default function Dashboard() {
               Smart Bookmark
             </h1>
             <p className="text-gray-500 text-sm mt-1">
-              Welcome {user.user_metadata?.full_name || user.email}
+              {user.user_metadata?.full_name || user.email}
             </p>
           </div>
 
@@ -119,7 +151,6 @@ export default function Dashboard() {
             onClick={handleLogout}
             className="px-4 py-2 bg-red-500 hover:bg-red-600 text-white rounded-lg text-sm font-medium transition shadow-sm cursor-pointer"
           >
-            
             Logout
           </button>
         </div>
@@ -142,9 +173,13 @@ export default function Dashboard() {
               className="w-full px-4 py-3 bg-white border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition"
             />
 
+            {errorMessage && (
+              <p className="text-sm text-red-500">{errorMessage}</p>
+            )}
+
             <button
               onClick={addBookmark}
-              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition shadow-sm cursor-pointer"
+              className="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium transition shadow-sm cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
             >
               Add Bookmark
             </button>
@@ -176,7 +211,7 @@ export default function Dashboard() {
 
                   <button
                     onClick={() => deleteBookmark(b.id)}
-                    className="text-sm text-red-500 hover:text-red-600 transition cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
+                    className="text-sm text-red-500 hover:text-red-600 transition cursor-pointer"
                   >
                     Delete
                   </button>
