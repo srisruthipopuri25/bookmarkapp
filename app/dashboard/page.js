@@ -2,8 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabaseClient";
+import { useRouter } from "next/navigation";
 
 export default function Dashboard() {
+  const router = useRouter();
   const [user, setUser] = useState(null);
   const [url, setUrl] = useState("");
   const [title, setTitle] = useState("");
@@ -14,7 +16,7 @@ export default function Dashboard() {
       const { data } = await supabase.auth.getSession();
 
       if (!data.session) {
-        window.location.href = "/";
+        router.push("/");
       } else {
         setUser(data.session.user);
       }
@@ -27,7 +29,7 @@ export default function Dashboard() {
         if (session) {
           setUser(session.user);
         } else {
-          window.location.href = "/";
+          router.push("/");
         }
       }
     );
@@ -35,7 +37,7 @@ export default function Dashboard() {
     return () => {
       listener.subscription.unsubscribe();
     };
-  }, []);
+  }, [router]);
 
   useEffect(() => {
     if (!user) return;
@@ -85,47 +87,63 @@ export default function Dashboard() {
     await supabase.from("bookmarks").delete().eq("id", id);
   };
 
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    router.push("/");
+  };
+
   if (!user) return null;
 
   return (
     <main className="min-h-screen bg-gray-950 text-white p-10">
-      <h1 className="text-3xl font-bold mb-6">
-        Welcome {user.user_metadata?.full_name || user.email}
-      </h1>
+      <div className="flex justify-between items-center mb-8">
+        <h1 className="text-3xl font-bold">
+          Welcome {user.user_metadata?.full_name || user.email}
+        </h1>
 
-      <div className="space-y-3">
+        <button
+          onClick={handleLogout}
+          className="px-4 py-2 bg-red-600 rounded hover:bg-red-700 transition"
+        >
+          Logout
+        </button>
+      </div>
+
+      <div className="space-y-3 mb-8 bg-gray-900 p-6 rounded">
         <input
           placeholder="URL"
           value={url}
           onChange={(e) => setUrl(e.target.value)}
           className="px-4 py-2 bg-gray-800 rounded w-full"
         />
+
         <input
           placeholder="Title"
           value={title}
           onChange={(e) => setTitle(e.target.value)}
           className="px-4 py-2 bg-gray-800 rounded w-full"
         />
+
         <button
           onClick={addBookmark}
-          className="px-4 py-2 bg-blue-600 rounded"
+          className="px-4 py-2 bg-blue-600 rounded hover:bg-blue-700 transition"
         >
           Add Bookmark
         </button>
       </div>
 
-      <ul className="mt-6 space-y-3">
+      <ul className="space-y-3">
         {bookmarks.map((b) => (
           <li
             key={b.id}
-            className="bg-gray-800 p-4 rounded flex justify-between"
+            className="bg-gray-800 p-4 rounded flex justify-between items-center"
           >
             <a href={b.url} target="_blank" rel="noreferrer">
               {b.title}
             </a>
             <button
               onClick={() => deleteBookmark(b.id)}
-              className="text-red-500"
+              className="text-red-500 hover:text-red-600"
             >
               Delete
             </button>
