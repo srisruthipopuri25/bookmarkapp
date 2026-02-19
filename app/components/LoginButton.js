@@ -27,7 +27,7 @@ export default function LoginButton() {
         <button
           onClick={handleGoogleLogin}
           disabled={loading}
-          className="px-6 py-3 bg-white text-black rounded w-full font-semibold hover:scale-105 transition"
+          className="px-6 py-3 bg-white text-black rounded w-full font-semibold cursor-pointer hover:scale-[1.02] active:scale-[0.98]"
         >
           {loading ? "Redirecting..." : "Continue with Google"}
         </button>
