@@ -73,11 +73,18 @@ export default function Dashboard() {
   const addBookmark = async () => {
     if (!url || !title) return;
 
-    await supabase.from("bookmarks").insert({
-      url,
-      title,
-      user_id: user.id,
-    });
+    const { data, error } = await supabase
+      .from("bookmarks")
+      .insert({
+        url,
+        title,
+        user_id: user.id,
+      })
+      .select();
+
+    if (!error && data) {
+      setBookmarks((prev) => [data[0], ...prev]);
+    }
 
     setUrl("");
     setTitle("");
