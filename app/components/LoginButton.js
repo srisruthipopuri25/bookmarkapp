@@ -12,6 +12,9 @@ export default function LoginButton() {
       provider: "google",
       options: {
         redirectTo: `${location.origin}/dashboard`,
+        queryParams: {
+          prompt: "select_account",
+        },
       },
     });
     setLoading(false);
